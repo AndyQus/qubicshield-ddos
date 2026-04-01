@@ -114,7 +114,7 @@ Alle Seiten teilen eine einheitliche Navigationsleiste (Home · Simulation · Da
 
 ### 5. Dokumentation
 - `index.html` — interaktiver zweisprachiger Guide (DE/EN), 18 Abschnitte
-- `docs/lernjournal-smart-contract.md` — ausführliches Lernjournal (DE), 20 Kapitel
+- `docs/lernjournal-smart-contract.md` — ausführliches Lernjournal (DE), 20 Kapitel (nicht im Repository enthalten)
 
 ## Konfigurierbare Parameter
 

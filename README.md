@@ -114,7 +114,7 @@ All pages share a unified navigation bar (Home · Simulation · Dashboard), a se
 
 ### 5. Documentation
 - `index.html` — interactive bilingual guide (DE/EN), 18 sections
-- `docs/lernjournal-smart-contract.md` — detailed learning journal (DE), 20 chapters
+- `docs/lernjournal-smart-contract.md` — detailed learning journal (DE), 20 chapters (not included in repository)
 
 ## Configurable Parameters
 
