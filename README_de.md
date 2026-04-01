@@ -124,17 +124,6 @@ SESSION_DURATION_TICKS  3600    // < 30 Minuten (> 2 Ticks/Sek., Intervall < 1s)
 MIN_DEPOSIT_AMOUNT      10      // Mindestkaution in QUBIC-Einheiten
 ```
 
-## Geschäftsmodell
-
-| Einnahmequelle | Modell |
-|---|---|
-| SaaS-Abonnement für Betreiber | 10–100 EUR/Monat |
-| Enterprise-Integration | 2.000–10.000 EUR Projekt |
-| Qubic Grants | Infrastruktur-Förderung |
-
-> **Hinweis zu eingezogenen Kautionen:** 50% werden verbrannt (deflationär), 50% gehen an den Betreiber des angegriffenen Dienstes.
-> Kein Plattform-Anteil by Design — das Geschäftsmodell basiert auf Abonnements, nicht auf dem Stattfinden von Angriffen.
-
 ## Risiken & Offene Fragen
 
 ### Produkt / Rechtliches
@@ -155,8 +144,6 @@ Qubic-Ticks produzieren gelegentlich keinen Block. Eine Transaktion, die in so e
 **3. On-Chain Forfeit wird im SC-Modus nicht aufgerufen** ⚠️ Blocker für Testnet  
 Die Angriffserkennung läuft lokal im Server. Wenn ein Angriff erkannt wird, aktualisiert `depositManager.forfeitDeposit()` nur den Mock-Zustand — die `Forfeit()`-Procedure im Smart Contract wird nie aufgerufen. Im SC-Modus behält ein Angreifer seine Kaution on-chain, egal was der Server erkennt. Dies muss vor einem sinnvollen Testnet-Test implementiert werden.
 
-**4. Forfeit-Aufteilung noch nicht festgelegt**  
-Die aktuelle Implementierung verwendet 50% verbrennen / 50% Operator. Das Lernjournal dokumentiert ein alternatives Modell (40% verbrennen / 40% Shareholder / 15% Operator / 1% Creator). Die Aufteilung muss vor dem Testnet-Deploy entschieden und der Contract entsprechend aktualisiert werden.
 
 **5. Session-Slot-Limit**  
 `MAX_DEPOSITS = 512` ist ein PoC-Wert. Wenn alle Slots belegt sind, werden neue Deposits mit einem kryptischen Fehlercode abgelehnt. Kein Warteschlangen-Mechanismus, keine Überlaufstrategie und keine benutzerfreundliche Fehlermeldung sind implementiert.
@@ -212,7 +199,9 @@ USE_REAL_SC=true npm run dev
 
 ## GitHub Pages
 
-Die Root-`index.html` (interaktiver Guide) ist eine statische Datei und funktioniert auf GitHub Pages ohne Server.  
+Der interaktive Guide ist verfügbar unter: **https://andyqus.github.io/qubicshield-ddos/**
+
+Die Root-`index.html` ist eine statische Datei und funktioniert auf GitHub Pages ohne Server.  
 Pages in den Repository-Einstellungen aktivieren (Source: Branch `main`, Root `/`) — fertig.
 
 > **Hinweis:** Die Web-App unter `public/` (API Tester, Simulation, Dashboard) benötigt den laufenden Express-Server für alle API-Aufrufe. Die Seiten werden auf GitHub Pages gerendert, aber alle API-Interaktionen schlagen ohne Server fehl.
@@ -220,7 +209,6 @@ Pages in den Repository-Einstellungen aktivieren (Source: Branch `main`, Root `/
 ## Nächste Schritte
 
 ### Vor dem Testnet-Deploy
-- [ ] Forfeit-Aufteilung festlegen (50/50 vs. 40/40/15/1) und `QubicShield.h` aktualisieren
 - [ ] On-Chain `Forfeit()`-Aufruf in `server.ts` implementieren, wenn ein Angriff erkannt wird
 - [ ] Qubic Community / Team kontaktieren — Projekt im Discord (#developers) vorstellen, Feedback einholen, Testnet-Deploy-Prozess klären
 

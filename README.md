@@ -124,17 +124,6 @@ SESSION_DURATION_TICKS  3600    // < 30 minutes (> 2 ticks/sec, interval < 1s)
 MIN_DEPOSIT_AMOUNT      10      // minimum deposit in QUBIC units
 ```
 
-## Business Model
-
-| Revenue Source | Model |
-|---|---|
-| SaaS subscription for operators | 10–100 EUR/month |
-| Enterprise integration | 2,000–10,000 EUR project |
-| Qubic Grants | Infrastructure funding |
-
-> **Note on forfeited deposits:** 50% is burned (deflationary), 50% goes to the attacked service operator.
-> No platform share by design — the business model relies on subscriptions, not on attacks happening.
-
 ## Risks & Open Questions
 
 ### Product / Legal
@@ -155,8 +144,6 @@ Qubic ticks occasionally produce no block. A transaction broadcast to such a tic
 **3. On-chain Forfeit not called in SC mode** ⚠️ Testnet blocker  
 Attack detection runs locally in the server. When an attack is detected, `depositManager.forfeitDeposit()` updates only the mock state — the `Forfeit()` procedure on the smart contract is never invoked. In SC mode an attacker keeps their deposit on-chain regardless of the detected attack. This must be implemented before a meaningful testnet test.
 
-**4. Forfeit split not yet finalized**  
-The current implementation uses 50% burned / 50% operator. The learning journal documents an alternative model (40% burned / 40% shareholders / 15% operator / 1% creator). The split must be decided and the contract updated before testnet deploy.
 
 **5. Session slot limit**  
 `MAX_DEPOSITS = 512` is a PoC value. When all slots are occupied, new deposits are rejected with a cryptic error code. No queue, overflow strategy, or user-facing message is implemented.
@@ -212,7 +199,9 @@ USE_REAL_SC=true npm run dev
 
 ## GitHub Pages
 
-The root `index.html` (interactive guide) is a static file and works on GitHub Pages without any server.  
+The interactive guide is available at: **https://andyqus.github.io/qubicshield-ddos/**
+
+The root `index.html` is a static file and works on GitHub Pages without any server.  
 Enable Pages in your repository settings (Source: `main` branch, root `/`) — done.
 
 > **Note:** The web app under `public/` (API Tester, Simulation, Dashboard) requires the running Express server for all API calls. These pages render on GitHub Pages but all API interactions will fail without the server.
@@ -220,7 +209,6 @@ Enable Pages in your repository settings (Source: `main` branch, root `/`) — d
 ## Next Steps
 
 ### Before testnet deploy
-- [ ] Decide forfeit split (50/50 vs. 40/40/15/1) and update `QubicShield.h`
 - [ ] Implement on-chain `Forfeit()` call in `server.ts` when attack is detected
 - [ ] Contact Qubic community / team — present the project in Discord (#developers), gather feedback, clarify testnet deploy process
 

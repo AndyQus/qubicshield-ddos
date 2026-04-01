@@ -209,25 +209,8 @@ Was im Mock-Modus funktioniert, funktioniert. Der nächste Schritt ist der Testn
 - **Epochenwechsel** — wöchentlicher Netzwerk-Neustart (~45 Min. Ausfall) übersteigt das aktuelle Retry-Fenster. Das Qubic-Team arbeitet daran.
 - **On-Chain Forfeit** wird bei erkanntem Angriff noch nicht aufgerufen — Testnet-Blocker, muss implementiert werden.
 - **Leere Ticks** — Transaktionen können stillschweigend verworfen werden und brauchen clientseitige Retry-Logik.
-- **Forfeit-Aufteilung** — 50/50 vs. 40/40/15/1-Modell noch nicht final entschieden.
 
 Vollständige Liste in [README_de.md — Bekannte technische Probleme](README_de.md).
-
----
-
-## Geschäftsmodell
-
-QubicShield ist Open Source. Der Smart Contract liegt auf GitHub. Jeder kann ihn lesen, forken, prüfen.
-
-Vertrauen erfordert Transparenz. Ein offener Standard kann nur auf offenem Code basieren.
-
-| Einnahmequelle | Modell |
-|---|---|
-| Qubic Foundation Grant | Förderung für PoC und Erstentwicklung |
-| Managed Services (optional) | Gehostetes Dashboard, verwaltete Nodes, Integrations-Support — der Kern bleibt kostenlos |
-| Enterprise-Integration | Individueller Deployment, SLA, Support |
-
-Das Kernprotokoll ist und bleibt kostenlos. Einnahmen kommen aus Services rund ums Protokoll, nicht aus dem Protokoll selbst.
 
 ---
 

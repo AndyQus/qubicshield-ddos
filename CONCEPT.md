@@ -209,25 +209,8 @@ What works in mock mode works. The next step is testnet deploy and end-to-end va
 - **Epoch change** — weekly network restart (~45 min outage) exceeds current retry window. The Qubic team is working on this.
 - **On-chain forfeit** not yet called when attack detected — testnet blocker, must be implemented.
 - **Empty ticks** — transactions may be silently dropped and need client-side retry.
-- **Forfeit split** — 50/50 vs. 40/40/15/1 model not yet finalized.
 
 Full list in [README.md — Known Technical Problems](README.md).
-
----
-
-## Business Model
-
-QubicShield is open source. The smart contract is on GitHub. Anyone can read it, fork it, audit it.
-
-Trust requires transparency. An open standard can only be built on open code.
-
-| Revenue | Model |
-|---|---|
-| Qubic Foundation Grant | Funding for PoC and initial development |
-| Managed services (optional) | Hosted dashboard, managed nodes, integration support — the core stays free |
-| Enterprise integration | Custom deployment, SLA, support |
-
-The core protocol is and remains free. Revenue comes from services around it, not from the protocol itself.
 
 ---
 
