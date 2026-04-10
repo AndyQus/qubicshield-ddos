@@ -49,9 +49,11 @@ class DepositManager {
   /** Used nonces per session — prevents replay attacks on signed requests */
   private usedNonces: Map<string, Set<string>> = new Map();
 
-  // 50/50 split accumulators — mirrors the SC's BEGIN_EPOCH distribution
-  private forfeitedToBurn   = 0;   // 50% → permanently removed from supply
-  private forfeitedToVictim = 0;   // 50% → transferred to the attacked service operator
+  // 4-way split accumulators — mirrors the SC's BEGIN_EPOCH distribution
+  private forfeitedToBurn         = 0;   // 35% → permanently removed from supply
+  private forfeitedToVictim       = 0;   // 40% → transferred to the attacked service operator
+  private forfeitedToShareholders = 0;   // 20% → distributed as dividends to shareholders
+  private forfeitedToPlatform     = 0;   //  5% → transferred to platform wallet
 
   // Event log — last MAX_EVENTS entries, newest first
   private readonly MAX_EVENTS = 50;
@@ -271,9 +273,11 @@ class DepositManager {
 
   /**
    * Aggregate statistics across all deposits.
-   * forfeitedToBurn and forfeitedToVictim reflect the 50/50 split:
-   *   50% → burned (removed from QUBIC supply)
-   *   50% → victim (transferred to the attacked service operator)
+   * Split accumulators reflect the 4-way distribution:
+   *   35% → burned (removed from QUBIC supply)
+   *   40% → victim (transferred to the attacked service operator)
+   *   20% → shareholders (distributed as dividends)
+   *    5% → platform (developer sustainability)
    */
   getStats(): {
     totalDeposits: number;
@@ -283,6 +287,8 @@ class DepositManager {
     forfeitedAmount: number;
     forfeitedToBurn: number;
     forfeitedToVictim: number;
+    forfeitedToShareholders: number;
+    forfeitedToPlatform: number;
     refundedCount: number;
     forfeitedCount: number;
   } {
@@ -314,6 +320,8 @@ class DepositManager {
       forfeitedAmount,
       forfeitedToBurn: this.forfeitedToBurn,
       forfeitedToVictim: this.forfeitedToVictim,
+      forfeitedToShareholders: this.forfeitedToShareholders,
+      forfeitedToPlatform: this.forfeitedToPlatform,
       refundedCount,
       forfeitedCount,
     };
@@ -328,9 +336,15 @@ class DepositManager {
     deposit.forfeitReason = reason;
     this.deposits.set(deposit.sessionId, deposit);
 
-    const half = Math.floor(deposit.amount / 2);
-    this.forfeitedToBurn   += half;
-    this.forfeitedToVictim += half;
+    const toBurn         = Math.floor(deposit.amount * 35 / 100);
+    const toVictim       = Math.floor(deposit.amount * 40 / 100);
+    const toShareholders = Math.floor(deposit.amount * 20 / 100);
+    const toPlatform     = Math.floor(deposit.amount * 5  / 100);
+
+    this.forfeitedToBurn         += toBurn;
+    this.forfeitedToVictim       += toVictim;
+    this.forfeitedToShareholders += toShareholders;
+    this.forfeitedToPlatform     += toPlatform;
 
     this._logEvent({
       type: 'attack', sessionId: deposit.sessionId,
@@ -340,7 +354,7 @@ class DepositManager {
 
     console.warn(
       `[DepositManager] Deposit FORFEITED: sessionId=${deposit.sessionId} reason="${reason}" ` +
-      `amount=${deposit.amount} QUBIC → ${half} burned + ${half} to victim`
+      `amount=${deposit.amount} QUBIC → ${toBurn} burned + ${toVictim} to victim + ${toShareholders} to shareholders + ${toPlatform} to platform`
     );
   }
 

@@ -12,7 +12,7 @@
  *   4. forfeitDeposit     — success, not found, already processed
  *   5. isAttacking        — below threshold, above threshold
  *   6. getStats           — counters and amounts
- *   7. SC math simulation — forfeit distribution 40/40/15/1/4 split
+ *   7. SC math simulation — forfeit distribution 35/40/20/5 split
  */
 
 import assert from 'assert';
@@ -269,33 +269,38 @@ suite('6. getStats', () => {
   });
 });
 
-// ─── Suite 7: SC math simulation — forfeit distribution 50/50 ─────────────
+// ─── Suite 7: SC math simulation — forfeit distribution 35/40/20/5 ────────
 //
 // The real smart contract distributes forfeited QUBIC in BEGIN_EPOCH.
-// Split: 50% burned permanently, 50% to attacked service operator.
-// 0% to shareholders — by design (no rent-seeking from DDoS victims).
+// Split: 35% burned, 40% to operator, 20% to shareholders, 5% to platform.
 
-suite('7. SC math: forfeit distribution 50/50 (mirrors BEGIN_EPOCH)', () => {
+suite('7. SC math: forfeit distribution 35/40/20/5 (mirrors BEGIN_EPOCH)', () => {
   function simulateDistribution(pending: number) {
-    const half    = Math.floor(pending / 2);
-    const burned  = half;
-    const toVictim = half;
-    const reserve = pending - burned - toVictim;  // 0 for even, 1 for odd
-    return { burned, toVictim, reserve, total: burned + toVictim };
+    const toBurn         = Math.floor(pending * 35 / 100);
+    const toVictim       = Math.floor(pending * 40 / 100);
+    const toShareholders = Math.floor(pending * 20 / 100);
+    const toPlatform     = Math.floor(pending * 5  / 100);
+    const total          = toBurn + toVictim + toShareholders + toPlatform;
+    const reserve        = pending - total;
+    return { toBurn, toVictim, toShareholders, toPlatform, reserve, total };
   }
 
-  test('1000 QU: burned=500, toVictim=500, reserve=0', () => {
+  test('1000 QU: burned=350, toVictim=400, toShareholders=200, toPlatform=50, reserve=0', () => {
     const r = simulateDistribution(1000);
-    assert.strictEqual(r.burned, 500);
-    assert.strictEqual(r.toVictim, 500);
+    assert.strictEqual(r.toBurn, 350);
+    assert.strictEqual(r.toVictim, 400);
+    assert.strictEqual(r.toShareholders, 200);
+    assert.strictEqual(r.toPlatform, 50);
     assert.strictEqual(r.reserve, 0);
   });
 
-  test('1001 QU (odd): burned=500, toVictim=500, reserve=1', () => {
-    const r = simulateDistribution(1001);
-    assert.strictEqual(r.burned, 500);
-    assert.strictEqual(r.toVictim, 500);
-    assert.strictEqual(r.reserve, 1);
+  test('100 QU: burned=35, toVictim=40, toShareholders=20, toPlatform=5, reserve=0', () => {
+    const r = simulateDistribution(100);
+    assert.strictEqual(r.toBurn, 35);
+    assert.strictEqual(r.toVictim, 40);
+    assert.strictEqual(r.toShareholders, 20);
+    assert.strictEqual(r.toPlatform, 5);
+    assert.strictEqual(r.reserve, 0);
   });
 
   test('total paid out never exceeds pending (no QU created from thin air)', () => {
@@ -306,28 +311,30 @@ suite('7. SC math: forfeit distribution 50/50 (mirrors BEGIN_EPOCH)', () => {
     }
   });
 
-  test('reserve is always 0 or 1 (only odd-unit remainder stays in contract)', () => {
-    for (const amount of [1, 2, 3, 99, 100, 101, 676, 1337]) {
-      const r = simulateDistribution(amount);
-      assert.ok(r.reserve === 0 || r.reserve === 1,
-        `amount=${amount}: reserve=${r.reserve}`);
-    }
+  test('remainder handling: pending=101 → total ≤ 101', () => {
+    const r = simulateDistribution(101);
+    assert.ok(r.total <= 101, `total=${r.total} exceeds pending=101`);
+    assert.ok(r.reserve >= 0, `reserve must be non-negative`);
   });
 
   test('0 pending → all outputs are 0', () => {
     const r = simulateDistribution(0);
-    assert.strictEqual(r.burned, 0);
+    assert.strictEqual(r.toBurn, 0);
     assert.strictEqual(r.toVictim, 0);
+    assert.strictEqual(r.toShareholders, 0);
+    assert.strictEqual(r.toPlatform, 0);
     assert.strictEqual(r.reserve, 0);
   });
 
-  test('depositManager forfeit: forfeitedToBurn and forfeitedToVictim are tracked', () => {
+  test('depositManager forfeit 1000 QU: all 4 accumulators correct', () => {
     const dm = freshManager();
     const { sessionId } = dm.createDeposit('WALLET_X', 1000);
     dm.forfeitDeposit(sessionId, 'DDoS');
     const stats = dm.getStats();
-    assert.strictEqual(stats.forfeitedToBurn, 500,   'burn must be 500');
-    assert.strictEqual(stats.forfeitedToVictim, 500, 'victim must be 500');
+    assert.strictEqual(stats.forfeitedToBurn,         350, 'burn must be 350 (35%)');
+    assert.strictEqual(stats.forfeitedToVictim,       400, 'victim must be 400 (40%)');
+    assert.strictEqual(stats.forfeitedToShareholders, 200, 'shareholders must be 200 (20%)');
+    assert.strictEqual(stats.forfeitedToPlatform,      50, 'platform must be 50 (5%)');
   });
 
   test('depositManager forfeit odd amount: remainder not counted', () => {
@@ -335,9 +342,11 @@ suite('7. SC math: forfeit distribution 50/50 (mirrors BEGIN_EPOCH)', () => {
     const { sessionId } = dm.createDeposit('WALLET_Y', 101);
     dm.forfeitDeposit(sessionId, 'DDoS');
     const stats = dm.getStats();
-    assert.strictEqual(stats.forfeitedToBurn, 50);
-    assert.strictEqual(stats.forfeitedToVictim, 50);
-    // 1 QU remainder stays in contract (not tracked in split — by design)
+    assert.strictEqual(stats.forfeitedToBurn,         35, 'burn must be 35 (35% of 101, floored)');
+    assert.strictEqual(stats.forfeitedToVictim,       40, 'victim must be 40 (40% of 101, floored)');
+    assert.strictEqual(stats.forfeitedToShareholders, 20, 'shareholders must be 20 (20% of 101, floored)');
+    assert.strictEqual(stats.forfeitedToPlatform,      5, 'platform must be 5 (5% of 101, floored)');
+    // remainder = 101 - 35 - 40 - 20 - 5 = 1 stays in contract
   });
 });
 
@@ -522,11 +531,11 @@ suite('10. SC Client: payload serialisation', () => {
     assert.strictEqual(size, 45);
   });
 
-  test('GetStats_output: exactly 56 bytes (uint32×2 + sint64×6)', () => {
+  test('GetStats_output: exactly 72 bytes (uint32×2 + sint64×8)', () => {
     // uint32 totalDepositsEver(4) + uint32 activeCount(4)
-    // + sint64×6: totalHeld/Refunded/Forfeited/Burned/ToVictim/Pending(48)
-    const size = SIZE_UINT32 * 2 + SIZE_SINT64 * 6;
-    assert.strictEqual(size, 56);
+    // + sint64×8: totalHeld/Refunded/Forfeited/Burned/ToVictim/ToShareholders/ToPlatform/Pending(64)
+    const size = SIZE_UINT32 * 2 + SIZE_SINT64 * 8;
+    assert.strictEqual(size, 72);
   });
 
   test('readUint32LE: parses little-endian correctly', () => {

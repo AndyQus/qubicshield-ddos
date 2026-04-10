@@ -804,9 +804,7 @@
             class="inline">Step 3b — Attacker</span></div>
         <h3><span data-lang="de" class="inline">Kaution konfisziert</span><span data-lang="en" class="inline">Deposit
             Forfeited</span></h3>
-        <p><span data-lang="de" class="inline">Angriffsmuster erkannt → Kaution weg. 50% verbrannt · 50% an den
-            Angegriffenen. 0% an Plattform.</span><span data-lang="en" class="inline">Attack pattern detected → deposit
-            gone. 50% burned · 50% to the victim. 0% to platform.</span></p>
+        <p><span data-lang="de" class="inline">Angriffsmuster erkannt → Kaution weg. 35% verbrannt · 40% ans Opfer · 20% Aktionäre · 5% Plattform.</span><span data-lang="en" class="inline">Attack pattern detected → deposit gone. 35% burned · 40% to victim · 20% shareholders · 5% platform.</span></p>
       </div>
     </div>
   </section>
@@ -897,12 +895,16 @@
         <div class="split-vis" id="split-vis" style="display:none">
           <h4>Token-Verteilung nach Konfiszierung</h4>
           <div class="split-bar">
-            <div class="split-burn">50% verbrannt</div>
-            <div class="split-victim">50% ans Opfer</div>
+            <div class="split-burn" style="flex:35">35% verbrannt</div>
+            <div class="split-victim" style="flex:40">40% ans Opfer</div>
+            <div style="flex:20;background:#06b6d4;display:flex;align-items:center;justify-content:center;font-size:0.75rem;color:#fff;padding:4px">20% Aktionäre</div>
+            <div style="flex:5;background:#f59e0b;display:flex;align-items:center;justify-content:center;font-size:0.75rem;color:#fff;padding:4px">5% Plattform</div>
           </div>
           <div class="split-labels">
             <span id="split-burn-val">— QU verbrannt</span>
             <span id="split-victim-val">— QU ans Opfer</span>
+            <span id="split-shareholders-val">— QU Aktionäre</span>
+            <span id="split-platform-val">— QU Plattform</span>
           </div>
         </div>
       </div>
@@ -1273,7 +1275,10 @@
           const forfeitRes = responses.find(r => r.status === 403);
           const forfeitData = await forfeitRes.json();
 
-          const half = Math.floor(amount / 2);
+          const toBurn         = Math.floor(amount * 35 / 100);
+          const toVictim       = Math.floor(amount * 40 / 100);
+          const toShareholders = Math.floor(amount * 20 / 100);
+          const toPlatform     = Math.floor(amount * 5  / 100);
           setOutput('attack-output', {
             step: '3/3 — Ergebnis',
             status: 'DEPOSIT KONFISZIERT ⚡',
@@ -1281,16 +1286,18 @@
             statuses: [...new Set(statuses)],
             forfeitedAmount: forfeitData.forfeitedAmount ?? amount,
             distribution: forfeitData.distribution ?? {
-              burned: half, toVictim: half,
-              note: '50% verbrannt · 50% ans Opfer'
+              burned: toBurn, toVictim, toShareholders, toPlatform,
+              note: '35% verbrannt · 40% ans Opfer · 20% Aktionäre · 5% Plattform'
             },
           });
 
           setResult('attack-result', 'error',
-            `Angriff erkannt · ${amount} QU konfisziert · ${half} QU verbrannt`);
+            `Angriff erkannt · ${amount} QU konfisziert · ${toBurn} QU verbrannt`);
 
-          document.getElementById('split-burn-val').textContent = half + ' QU verbrannt';
-          document.getElementById('split-victim-val').textContent = half + ' QU ans Opfer';
+          document.getElementById('split-burn-val').textContent = toBurn + ' QU verbrannt';
+          document.getElementById('split-victim-val').textContent = toVictim + ' QU ans Opfer';
+          document.getElementById('split-shareholders-val').textContent = toShareholders + ' QU Aktionäre';
+          document.getElementById('split-platform-val').textContent = toPlatform + ' QU Plattform';
           document.getElementById('split-vis').style.display = 'block';
         } else {
           setOutput('attack-output', {

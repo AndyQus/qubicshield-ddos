@@ -22,9 +22,10 @@
 //
 //   Step 3b — Attack detected: operator calls Forfeit():
 //     The proxy detected an attack pattern and calls Forfeit(). The QUBIC
-//     stays in the SC until BEGIN_EPOCH runs the 50/50 distribution:
-//     50% is burned (permanent supply reduction), 50% goes to the operator
-//     as compensation for the attack. Attackers lose their entire deposit.
+//     stays in the SC until BEGIN_EPOCH runs the 4-way distribution:
+//     35% is burned (permanent supply reduction), 40% goes to the operator
+//     as compensation, 20% to shareholders via dividends, 5% to the platform.
+//     Attackers lose their entire deposit.
 //
 // WHY THIS ONLY WORKS ON QUBIC:
 //   On Ethereum, every qpi.transfer() costs gas. If the deposit is 0.001 EUR
@@ -111,6 +112,10 @@ struct QubicShield
     // Set once in BEGIN_EPOCH during contract initialization.
     id operator_;
 
+    // The platform wallet — receives 5% of forfeited QUBIC for sustainability.
+    // Set by the creator via SetPlatform().
+    id platform_;
+
     // Aggregate counters — updated on every deposit/refund/forfeit.
     // These power the GetStats() function without needing to scan all deposits.
     uint32  totalDepositsEver;   // all deposits created since contract deployed
@@ -120,8 +125,10 @@ struct QubicShield
     sint64  totalForfeited;       // cumulative total QUBIC ever forfeited (all-time)
     sint64  distributedForfeited; // cumulative total QUBIC already distributed from forfeits
                                   // pending = totalForfeited - distributedForfeited
-    sint64  totalBurned;          // cumulative QUBIC permanently removed from supply (50% of forfeits)
-    sint64  totalToVictim;        // cumulative QUBIC transferred to attacked operators  (50% of forfeits)
+    sint64  totalBurned;          // cumulative QUBIC permanently removed from supply (35% of forfeits)
+    sint64  totalToVictim;        // cumulative QUBIC transferred to attacked operators  (40% of forfeits)
+    sint64  totalToShareholders;  // cumulative QUBIC distributed as dividends           (20% of forfeits)
+    sint64  totalToPlatform;      // cumulative QUBIC transferred to platform wallet      (5% of forfeits)
 
 
     // =========================================================================
@@ -203,6 +210,23 @@ struct QubicShield
     };
 
     // -------------------------------------------------------------------------
+    // SetPlatform — transfer platform address to a new wallet (creator only)
+    // -------------------------------------------------------------------------
+    struct SetPlatform_input
+    {
+        // The new platform wallet address.
+        // Must not be zero — a zero address would lose 5% of all forfeit revenue.
+        id newPlatform;
+    };
+
+    struct SetPlatform_output
+    {
+        uint8   success;     // 1 = platform updated,  0 = failed
+        uint8   errorCode;   // 0=ok  1=not operator  2=zero address rejected
+        id      oldPlatform; // the previous platform address (for audit trail)
+    };
+
+    // -------------------------------------------------------------------------
     // WithdrawForfeited — operator withdraws accumulated forfeited QUBIC
     // -------------------------------------------------------------------------
     struct WithdrawForfeited_input
@@ -249,8 +273,10 @@ struct QubicShield
         sint64  totalHeld;
         sint64  totalRefunded;
         sint64  totalForfeited;
-        sint64  totalBurned;          // 50% of distributed forfeits — permanently destroyed
-        sint64  totalToVictim;        // 50% of distributed forfeits — paid to attacked operators
+        sint64  totalBurned;          // 35% of distributed forfeits — permanently destroyed
+        sint64  totalToVictim;        // 40% of distributed forfeits — paid to attacked operators
+        sint64  totalToShareholders;  // 20% of distributed forfeits — paid as dividends
+        sint64  totalToPlatform;      // 5% of distributed forfeits — paid to platform wallet
         sint64  pendingDistribution;  // forfeited but not yet distributed (= next epoch's pool)
     };
 
@@ -278,43 +304,33 @@ struct QubicShield
         // -----------------------------------------------------------------------
         // PART 2 — Forfeit revenue distribution (runs every epoch)
         //
-        // All QUBIC forfeited since the last distribution is split 50/50:
-        //   50% → burned permanently    (attacker tokens are destroyed; deflation)
-        //   50% → operator              (compensation for the attacked service)
-        //    0% → shareholders          (by design: no rent-seeking from DDoS victims)
-        //
-        // Design rationale:
-        //   The goal of QubicShield is to make DDoS economically irrational.
-        //   Burning half punishes the attacker. Paying the victim compensates the
-        //   harm. Shareholders receive nothing — the value flows to the ecosystem
-        //   (burn = deflation benefits all holders) and the attacked party directly.
+        // All QUBIC forfeited since the last distribution is split 4 ways:
+        //   35% → burned permanently    (attacker tokens are destroyed; deflation)
+        //   40% → operator              (compensation for the attacked service)
+        //   20% → shareholders          (via qpi.distributeDividends())
+        //    5% → platform              (developer sustainability)
         //
         // We track distributedForfeited to know what is still pending.
         // pending = totalForfeited - distributedForfeited
+        // Any remainder from integer division stays in the contract and will
+        // be included in the next epoch's pending pool.
         // -----------------------------------------------------------------------
         sint64 pending = totalForfeited - distributedForfeited;
 
         if (pending > 0)
         {
-            // Integer division: any single-unit remainder stays in the contract.
-            sint64 half = div(pending, 2);
+            // New 4-way split: 35% burn, 40% operator, 20% shareholders, 5% platform
+            sint64 toBurn         = div(pending * 35, 100);
+            sint64 toOperator     = div(pending * 40, 100);
+            sint64 toShareholders = div(pending * 20, 100);
+            sint64 toPlatform     = div(pending * 5,  100);
 
-            // Burn 50% — permanently removes tokens from supply
-            if (half > 0)
-            {
-                qpi.burn(half);
-                totalBurned = totalBurned + half;
-            }
+            if (toBurn > 0)         { qpi.burn(toBurn);                             totalBurned         = totalBurned         + toBurn;         }
+            if (toOperator > 0)     { qpi.transfer(operator_, toOperator);           totalToVictim       = totalToVictim       + toOperator;     }
+            if (toShareholders > 0) { qpi.distributeDividends(toShareholders);       totalToShareholders = totalToShareholders + toShareholders; }
+            if (toPlatform > 0)     { qpi.transfer(platform_, toPlatform);           totalToPlatform     = totalToPlatform     + toPlatform;     }
 
-            // 50% to operator — compensation for the attacked service
-            if (half > 0)
-            {
-                qpi.transfer(operator_, half);
-                totalToVictim = totalToVictim + half;
-            }
-
-            // Record how much we distributed (2 × half to handle odd-unit remainder)
-            distributedForfeited = distributedForfeited + half + half;
+            distributedForfeited = distributedForfeited + toBurn + toOperator + toShareholders + toPlatform;
         }
     }
     END_EPOCH
@@ -627,7 +643,7 @@ struct QubicShield
     //   pending             = totalForfeited - distributedForfeited
     //
     // This procedure lets the operator withdraw from the pending pool early —
-    // before the next BEGIN_EPOCH runs the automatic 50/50 split.
+    // before the next BEGIN_EPOCH runs the automatic 4-way split.
     //
     // We MUST increment distributedForfeited (not decrement totalForfeited) so that
     // BEGIN_EPOCH does not double-count this withdrawal in the next epoch.
@@ -635,13 +651,13 @@ struct QubicShield
     // Why allow early withdrawal at all?
     //   The operator (attacked service) may need compensation immediately after an
     //   attack, not just once a week. This is an emergency escape hatch.
-    //   The 50/50 split still applies: caller receives 50%, the other 50% is burned.
+    //   The 4-way split still applies: 35% burned, 40% operator, 20% shareholders, 5% platform.
     //
     // What happens here:
     //   1. Verify the caller is the operator
     //   2. Verify the requested amount does not exceed the pending (undistributed) pool
     //   3. Verify the contract actually holds enough QUBIC (safety check)
-    //   4. Apply 50/50 split: burn half, transfer half to operator
+    //   4. Apply 4-way split: 35% burn, 40% operator, 20% shareholders, 5% platform
     //   5. Mark as distributed so BEGIN_EPOCH skips this amount
     // -------------------------------------------------------------------------
     PUBLIC_PROCEDURE(WithdrawForfeited)
@@ -680,33 +696,28 @@ struct QubicShield
             return;
         }
 
-        // --- Apply 50/50 split: burn half, pay half to operator --------------
-        // Integer division: odd-unit remainder stays in the contract.
+        // --- Apply 4-way split: 35% burn, 40% operator, 20% shareholders, 5% platform ---
+        // Integer division: any remainder stays in the contract as reserve.
 
-        sint64 half = div(input.amount, 2);
+        sint64 toBurn         = div(input.amount * 35, 100);
+        sint64 toOperator     = div(input.amount * 40, 100);
+        sint64 toShareholders = div(input.amount * 20, 100);
+        sint64 toPlatform     = div(input.amount * 5,  100);
 
-        if (half > 0)
-        {
-            qpi.burn(half);
-            totalBurned = totalBurned + half;
-        }
-
-        if (half > 0)
-        {
-            qpi.transfer(operator_, half);
-            totalToVictim = totalToVictim + half;
-        }
+        if (toBurn > 0)         { qpi.burn(toBurn);                             totalBurned         = totalBurned         + toBurn;         }
+        if (toOperator > 0)     { qpi.transfer(operator_, toOperator);           totalToVictim       = totalToVictim       + toOperator;     }
+        if (toShareholders > 0) { qpi.distributeDividends(toShareholders);       totalToShareholders = totalToShareholders + toShareholders; }
+        if (toPlatform > 0)     { qpi.transfer(platform_, toPlatform);           totalToPlatform     = totalToPlatform     + toPlatform;     }
 
         // --- Mark as distributed so BEGIN_EPOCH skips this amount ------------
-        // We advance distributedForfeited by the full input.amount.
-        // Any odd-unit remainder (input.amount - half - half) stays in contract
-        // as reserve and will be included in the next epoch's pending calculation.
+        // We advance distributedForfeited by the actual paid-out total.
+        // Any remainder (input.amount - total) stays in contract as reserve.
 
-        distributedForfeited = distributedForfeited + half + half;
+        distributedForfeited = distributedForfeited + toBurn + toOperator + toShareholders + toPlatform;
 
         output.success         = 1;
         output.errorCode       = 0;
-        output.withdrawnAmount = half;  // amount actually transferred to operator
+        output.withdrawnAmount = toOperator;  // amount actually transferred to operator
     }
 
 
@@ -754,6 +765,46 @@ struct QubicShield
 
         output.oldOperator = operator_;   // return previous operator for audit
         operator_          = input.newOperator;
+
+        output.success   = 1;
+        output.errorCode = 0;
+    }
+
+
+    // -------------------------------------------------------------------------
+    // SetPlatform — update the platform wallet that receives 5% of forfeits
+    //
+    // What happens here:
+    //   1. Verify the caller is the current operator (only they may update)
+    //   2. Reject zero address — a zero platform_ would lose 5% of all revenue
+    //   3. Save the old platform address for the audit trail in the output
+    //   4. Update platform_ to the new address
+    // -------------------------------------------------------------------------
+    PUBLIC_PROCEDURE(SetPlatform)
+    {
+        // --- Only the operator may update the platform address ----------------
+
+        if (qpi.invocator() != operator_)
+        {
+            output.success   = 0;
+            output.errorCode = 1;  // not current operator
+            return;
+        }
+
+        // --- Reject zero address — would silently discard 5% of forfeits -----
+
+        id zeroId;
+        if (input.newPlatform == zeroId)
+        {
+            output.success   = 0;
+            output.errorCode = 2;  // zero address rejected
+            return;
+        }
+
+        // --- Update the platform address -------------------------------------
+
+        output.oldPlatform = platform_;
+        platform_          = input.newPlatform;
 
         output.success   = 1;
         output.errorCode = 0;
@@ -838,6 +889,8 @@ struct QubicShield
         output.totalForfeited       = totalForfeited;
         output.totalBurned          = totalBurned;
         output.totalToVictim        = totalToVictim;
+        output.totalToShareholders  = totalToShareholders;
+        output.totalToPlatform      = totalToPlatform;
         output.pendingDistribution  = totalForfeited - distributedForfeited;
     }
 
@@ -856,6 +909,7 @@ struct QubicShield
         REGISTER_USER_PROCEDURE(Forfeit,            3);
         REGISTER_USER_PROCEDURE(WithdrawForfeited,  6);
         REGISTER_USER_PROCEDURE(SetOperator,        7);
+        REGISTER_USER_PROCEDURE(SetPlatform,        8);
 
         // Functions (read-only)
         REGISTER_USER_FUNCTION(ValidateSession, 4);

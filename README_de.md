@@ -88,7 +88,7 @@ Hält Kautionen on-chain und erzwingt alle Regeln — kein Server, kein Vertraue
 | `SetOperator(id)` | Procedure | Betreiber-Rolle übertragen |
 
 Der Session-Ablauf läuft automatisch im `BEGIN_TICK`-Hook (> 2× pro Sekunde, Intervall < 1s).  
-`END_EPOCH` verteilt eingezogene QUBIC: **50% werden verbrannt / 50% gehen an den angegriffenen Dienst-Betreiber**.  
+`END_EPOCH` verteilt eingezogene QUBIC: **35% verbrannt / 40% an den angegriffenen Betreiber / 20% an Aktionäre / 5% an die Plattform**.  
 Kein Shareholder- oder Plattform-Anteil — wenn es keine DDoS-Angriffe gibt, gibt es auch keine Ausschüttung.
 
 ### 2. Web-Proxy / Demo-Server (`src/server.ts`)

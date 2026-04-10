@@ -88,7 +88,7 @@ Holds deposits on-chain and enforces all rules — no server, no trust required.
 | `SetOperator(id)` | Procedure | Transfer operator role |
 
 Session expiry runs automatically in the `BEGIN_TICK` hook (> 2× per second, interval < 1s).  
-`END_EPOCH` distributes forfeited QUBIC: **50% burned / 50% to the attacked service operator**.  
+`END_EPOCH` distributes forfeited QUBIC: **35% burned / 40% to the attacked operator / 20% to shareholders / 5% to platform**.  
 No shareholder/platform share by design — if there are no DDoS attacks, there is no distribution.
 
 ### 2. Web Proxy / Demo Server (`src/server.ts`)

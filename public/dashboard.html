@@ -362,12 +362,12 @@
     <div class="stat s-burn">
       <div class="stat-label"><span data-lang="de" class="inline">Verbrannt</span><span data-lang="en" class="inline">Burned</span></div>
       <div class="stat-val" id="s-burn">—</div>
-      <div class="stat-sub"><span data-lang="de" class="inline">50% der Forfeits</span><span data-lang="en" class="inline">50% of forfeits</span></div>
+      <div class="stat-sub"><span data-lang="de" class="inline">35% der Forfeits</span><span data-lang="en" class="inline">35% of forfeits</span></div>
     </div>
     <div class="stat s-vict">
       <div class="stat-label"><span data-lang="de" class="inline">Ans Opfer</span><span data-lang="en" class="inline">To Victim</span></div>
       <div class="stat-val" id="s-vict">—</div>
-      <div class="stat-sub"><span data-lang="de" class="inline">50% der Forfeits</span><span data-lang="en" class="inline">50% of forfeits</span></div>
+      <div class="stat-sub"><span data-lang="de" class="inline">40% der Forfeits</span><span data-lang="en" class="inline">40% of forfeits</span></div>
     </div>
   </div>
 
@@ -729,12 +729,13 @@ function checkForAttack(events) {
   if (newest.id <= lastAttackId) return;
   lastAttackId = newest.id;
 
-  const half = Math.floor(newest.amount / 2);
+  const toBurn   = Math.floor(newest.amount * 35 / 100);
+  const toVictim = Math.floor(newest.amount * 40 / 100);
   const el   = document.getElementById('alert-attack');
   el.className = 'alert attack';
   el.innerHTML = isEn()
-    ? `⚡ Attack detected — ${fmt(newest.amount)} QU forfeited · ${fmt(half)} burned · ${fmt(half)} to victim`
-    : `⚡ Angriff erkannt — ${fmt(newest.amount)} QU konfisziert · ${fmt(half)} verbrannt · ${fmt(half)} ans Opfer`;
+    ? `⚡ Attack detected — ${fmt(newest.amount)} QU forfeited · ${fmt(toBurn)} burned · ${fmt(toVictim)} to victim`
+    : `⚡ Angriff erkannt — ${fmt(newest.amount)} QU konfisziert · ${fmt(toBurn)} verbrannt · ${fmt(toVictim)} ans Opfer`;
 
   setTimeout(() => { el.style.display = 'none'; }, 15_000);
 }

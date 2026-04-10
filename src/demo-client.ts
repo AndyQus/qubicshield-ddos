@@ -9,7 +9,7 @@
  *   --- Angriffs-Simulation ---
  *   5. Neuen Deposit für Angreifer erstellen
  *   6. Flood (55 parallele Requests)
- *   7. Konfiszierung + 50/50-Verteilung anzeigen
+ *   7. Konfiszierung + Verteilung (35/40/20/5) anzeigen
  *   8. Abschluss-Statistiken
  *
  * Starten:
@@ -228,27 +228,34 @@ async function main() {
   info(`Requests blockiert: ${ok403}`);
 
   // ── Schritt 7: Konfiszierung anzeigen ─────────────────────────────────
-  step(7, 'Konfiszierung + 50/50-Verteilung');
+  step(7, 'Konfiszierung + Verteilung (35/40/20/5)');
 
   if (forfeit) {
     const fd = forfeit.data;
     attack(`ANGRIFF ERKANNT — Deposit konfisziert!`);
 
-    const forfeited = fd.forfeitedAmount ?? attackAmount;
-    const half      = Math.floor(forfeited / 2);
-    const dist      = fd.distribution as { burned?: number; toVictim?: number } | undefined;
+    const forfeited      = fd.forfeitedAmount ?? attackAmount;
+    const dist           = fd.distribution as {
+      burned?: number; toVictim?: number;
+      toShareholders?: number; toPlatform?: number;
+    } | undefined;
+    const toBurn         = dist?.burned         ?? Math.floor(forfeited * 35 / 100);
+    const toVictim       = dist?.toVictim       ?? Math.floor(forfeited * 40 / 100);
+    const toShareholders = dist?.toShareholders ?? Math.floor(forfeited * 20 / 100);
+    const toPlatform     = dist?.toPlatform     ?? Math.floor(forfeited * 5  / 100);
 
     log('');
     log(`${C.bold}  Konfiszierter Betrag: ${forfeited} QU${C.reset}`);
     log('');
-    log(`  ${C.red}████████████████████${C.reset} ${C.green}████████████████████${C.reset}`);
-    log(`  ${C.red}  50% verbrannt      ${C.reset} ${C.green}  50% ans Opfer      ${C.reset}`);
-    log(`  ${C.red}  ${(dist?.burned ?? half).toLocaleString()} QU${C.reset}              ${C.green}  ${(dist?.toVictim ?? half).toLocaleString()} QU${C.reset}`);
+    log(`  ${C.red}█████████████${C.reset} ${C.green}████████████████${C.reset} ${C.cyan}████████${C.reset} ${C.yellow}███${C.reset}`);
+    log(`  ${C.red}  35% verbrannt     ${C.reset} ${C.green}  40% ans Opfer     ${C.reset} ${C.cyan}  20% Aktionäre${C.reset} ${C.yellow}  5% Plattform${C.reset}`);
+    log(`  ${C.red}  ${toBurn.toLocaleString()} QU${C.reset}          ${C.green}  ${toVictim.toLocaleString()} QU${C.reset}          ${C.cyan}  ${toShareholders.toLocaleString()} QU${C.reset}      ${C.yellow}  ${toPlatform.toLocaleString()} QU${C.reset}`);
     log('');
 
-    ok(`${dist?.burned ?? half} QU dauerhaft aus dem Umlauf entfernt (Deflation)`);
-    ok(`${dist?.toVictim ?? half} QU an den angegriffenen Dienst übertragen`);
-    ok(`0 QU an Plattform/Aktionäre`);
+    ok(`${toBurn} QU dauerhaft aus dem Umlauf entfernt (Deflation, 35%)`);
+    ok(`${toVictim} QU an den angegriffenen Dienst übertragen (40%)`);
+    ok(`${toShareholders} QU an Aktionäre ausgeschüttet (20%)`);
+    ok(`${toPlatform} QU an die Plattform übertragen (5%)`);
 
     log('');
     attack(`Der Angreifer hat ${forfeited} QU verloren.`);
@@ -268,6 +275,7 @@ async function main() {
     totalDeposits: number; activeSessions: number;
     heldAmount: number; refundedAmount: number; forfeitedAmount: number;
     forfeitedToBurn: number; forfeitedToVictim: number;
+    forfeitedToShareholders: number; forfeitedToPlatform: number;
     refundedCount: number; forfeitedCount: number;
   }>('/api/stats');
 
@@ -278,8 +286,10 @@ async function main() {
   info(`Gesamt Deposits:    ${s.totalDeposits}`);
   info(`Rückerstattet:      ${s.refundedCount}× · ${s.refundedAmount} QU`);
   info(`Konfisziert:        ${s.forfeitedCount}× · ${s.forfeitedAmount} QU`);
-  log(`  ${C.dim}  davon verbrannt:  ${s.forfeitedToBurn ?? 0} QU${C.reset}`);
-  log(`  ${C.dim}  davon ans Opfer:  ${s.forfeitedToVictim ?? 0} QU${C.reset}`);
+  log(`  ${C.dim}  davon verbrannt:        ${s.forfeitedToBurn ?? 0} QU (35%)${C.reset}`);
+  log(`  ${C.dim}  davon ans Opfer:        ${s.forfeitedToVictim ?? 0} QU (40%)${C.reset}`);
+  log(`  ${C.dim}  davon an Aktionäre:     ${s.forfeitedToShareholders ?? 0} QU (20%)${C.reset}`);
+  log(`  ${C.dim}  davon an Plattform:     ${s.forfeitedToPlatform ?? 0} QU (5%)${C.reset}`);
   log('');
 
   header('Demo abgeschlossen — QubicShield funktioniert');

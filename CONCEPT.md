@@ -75,12 +75,13 @@ The smart contract is the single source of truth. No server, no trust required.
 ### What Happens to Forfeited Deposits
 
 ```
-50% → burned           (permanently removed from supply — deflationary)
-50% → attacked operator (direct compensation for the damage)
- 0% → platform          (no conflict of interest)
+35% → burned           (permanently removed from supply — deflationary)
+40% → attacked operator (direct compensation for the damage)
+20% → shareholders     (passive income for IPO investors)
+ 5% → platform         (development & operations)
 ```
 
-No platform share by design. The business model does not depend on attacks happening.
+The platform share (5%) keeps development sustainable without creating a conflict of interest — the model does not depend on attacks happening.
 
 ---
 

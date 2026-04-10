@@ -75,12 +75,13 @@ Der Smart Contract ist die einzige Wahrheitsquelle. Kein Server, kein Vertrauen 
 ### Was mit eingezogenen Kautionen passiert
 
 ```
-50% → verbrannt          (dauerhaft aus dem Umlauf entfernt — deflationär)
-50% → angegriffener Betreiber (direkte Entschädigung für den Schaden)
- 0% → Plattform           (kein Interessenskonflikt)
+35% → verbrannt          (dauerhaft aus dem Umlauf entfernt — deflationär)
+40% → angegriffener Betreiber (direkte Entschädigung für den Schaden)
+20% → Aktionäre          (passive Einnahmen für IPO-Investoren)
+ 5% → Plattform           (Entwicklung & Betrieb)
 ```
 
-Kein Plattformanteil by Design. Das Geschäftsmodell hängt nicht davon ab, dass Angriffe stattfinden.
+Der Plattformanteil (5%) hält die Entwicklung nachhaltig, ohne einen Interessenskonflikt zu erzeugen — das Modell hängt nicht davon ab, dass Angriffe stattfinden.
 
 ---
 

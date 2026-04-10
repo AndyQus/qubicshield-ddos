@@ -267,15 +267,20 @@ app.get(
       const forfeitedAmount = depositBefore?.amount ?? 0;
       depositManager.forfeitDeposit(sessionId, 'DDoS attack pattern detected (>50 req/min)');
 
-      const half = Math.floor(forfeitedAmount / 2);
+      const toBurn         = Math.floor(forfeitedAmount * 35 / 100);
+      const toVictim       = Math.floor(forfeitedAmount * 40 / 100);
+      const toShareholders = Math.floor(forfeitedAmount * 20 / 100);
+      const toPlatform     = Math.floor(forfeitedAmount * 5  / 100);
       res.status(403).json({
         error:          'Attack pattern detected. Deposit has been forfeited.',
         sessionId,
         forfeitedAmount,
         distribution: {
-          burned:       half,
-          toVictim:     half,
-          note:         '50% burned permanently · 50% transferred to the attacked service operator',
+          burned:         toBurn,
+          toVictim:       toVictim,
+          toShareholders: toShareholders,
+          toPlatform:     toPlatform,
+          note:           '35% burned · 40% to operator · 20% to shareholders · 5% to platform',
         },
       });
       return;

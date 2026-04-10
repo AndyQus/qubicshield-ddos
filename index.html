@@ -1138,40 +1138,49 @@ Protected API               Web Server + QubicShield</span></div>
         <tbody>
           <tr>
             <td>🔥 <span data-lang="de">Verbrennen</span><span data-lang="en">Burn</span></td>
-            <td><strong>50%</strong></td>
+            <td><strong>35%</strong></td>
             <td><span data-lang="de">Bestrafungssignal — Token dauerhaft vernichtet, deflationär</span><span data-lang="en">Punishment signal — tokens permanently destroyed, deflationary</span></td>
             <td><code>qpi.burn()</code></td>
           </tr>
           <tr>
             <td>🛡️ <span data-lang="de">Angegriffener Dienst (Operator)</span><span data-lang="en">Attacked service (operator)</span></td>
-            <td><strong>50%</strong></td>
-            <td><span data-lang="de">Direkte Entschädigung des Opfers — keine Plattformgebühr, kein Mittelsmann</span><span data-lang="en">Direct compensation for the victim — no platform fee, no middleman</span></td>
+            <td><strong>40%</strong></td>
+            <td><span data-lang="de">Direkte Entschädigung des Opfers — größter Einzelanteil</span><span data-lang="en">Direct compensation for the victim — largest single share</span></td>
             <td><code>qpi.transfer(operator_)</code></td>
           </tr>
           <tr>
-            <td>🏛️ <span data-lang="de">Shareholder / Plattform</span><span data-lang="en">Shareholders / platform</span></td>
-            <td><strong>0%</strong></td>
-            <td><span data-lang="de">Kein Rent-Seeking — QubicShield verdient <em>nicht</em> an Angriffen</span><span data-lang="en">No rent-seeking — QubicShield does <em>not</em> profit from attacks</span></td>
-            <td>—</td>
+            <td>🏛️ <span data-lang="de">Aktionäre (Shareholders)</span><span data-lang="en">Shareholders</span></td>
+            <td><strong>20%</strong></td>
+            <td><span data-lang="de">Passives Einkommen für IPO-Investoren — ähnlich wie QSwap (16%)</span><span data-lang="en">Passive income for IPO investors — similar to QSwap (16%)</span></td>
+            <td><code>qpi.distributeDividends()</code></td>
+          </tr>
+          <tr>
+            <td>⚙️ <span data-lang="de">Plattform</span><span data-lang="en">Platform</span></td>
+            <td><strong>5%</strong></td>
+            <td><span data-lang="de">Entwicklung & Betrieb — nachhaltig ohne Interessenskonflikt</span><span data-lang="en">Development & operations — sustainable without conflict of interest</span></td>
+            <td><code>qpi.transfer(platform_)</code></td>
           </tr>
         </tbody>
       </table>
 
       <div class="callout callout-green" style="margin-top:1rem">
-        <span data-lang="de"><strong>Designentscheidung:</strong> Die 50/50-Aufteilung kann über die Qubic-Community noch abgestimmt werden. Das Grundprinzip — <em>kein Gewinn für die Plattform aus Angriffen</em> — ist bewusst als Marketing-Argument gewählt: Wenn QubicShield funktioniert, gibt es keine DDoS-Angriffe mehr. Kein Angriff = kein Forfeit = keine Ausschüttung. Die Verteilung läuft automatisch in <code>END_EPOCH</code> (~wöchentlich), kein manueller Aufruf nötig.</span>
-        <span data-lang="en"><strong>Design decision:</strong> The 50/50 split can still be voted on by the Qubic community. The core principle — <em>no platform profit from attacks</em> — is deliberately a marketing argument: if QubicShield works, there are no more DDoS attacks. No attack = no forfeit = no distribution. Distribution runs automatically in <code>END_EPOCH</code> (~weekly), no manual call needed.</span>
+        <span data-lang="de"><strong>Designentscheidung:</strong> Vergleichbar mit QSwap (16% Shareholders). Der Plattformanteil (5%) hält die Entwicklung nachhaltig — das Modell hängt aber nicht davon ab, dass Angriffe stattfinden. Kein Angriff = kein Forfeit = keine Ausschüttung. Die Verteilung läuft automatisch in <code>END_EPOCH</code> (~wöchentlich), kein manueller Aufruf nötig.</span>
+        <span data-lang="en"><strong>Design decision:</strong> Comparable to QSwap (16% shareholders). The platform share (5%) keeps development sustainable — but the model does not depend on attacks happening. No attack = no forfeit = no distribution. Distribution runs automatically in <code>END_EPOCH</code> (~weekly), no manual call needed.</span>
       </div>
       <pre><code>// Called automatically once per epoch (~weekly)
 END_EPOCH
 {
     if (totalForfeited == 0) { return; }
 
-    sint64 half = totalForfeited / 2;
+    sint64 toBurn         = div(pending * 35, 100);
+    sint64 toOperator     = div(pending * 40, 100);
+    sint64 toShareholders = div(pending * 20, 100);
+    sint64 toPlatform     = div(pending * 5,  100);
 
-    qpi.burn(half);                    // 50% — permanently destroyed (deflationary)
-    qpi.transfer(operator_, half);     // 50% — compensation for the attacked service
-
-    // 0% to shareholders — no rent-seeking from DDoS victims (by design)
+    qpi.burn(toBurn);                          // 35% — permanently destroyed (deflationary)
+    qpi.transfer(operator_, toOperator);       // 40% — compensation for the attacked service
+    qpi.distributeDividends(toShareholders);   // 20% — passive income for IPO shareholders
+    qpi.transfer(platform_, toPlatform);       // 5%  — development & operations
 
     totalForfeited = 0;
 }</code></pre>
