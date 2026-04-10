@@ -174,7 +174,7 @@ Long term: native browser integration, like the password manager or the HTTPS lo
 | Cloudflare / Akamai | Technical filtering — no economic deposit model |
 | Academic research | Discussed conceptually, never production-ready |
 
-The idea connects to Hashcash (1997) and Lightning HTLCs — but the complete combination of refundable deposit + web access + DDoS protection + forfeit on detection has not been built as a product anywhere.
+The idea connects to Hashcash (1997) and Lightning HTLCs — but the complete combination of refundable deposit + web access + economic spam protection + forfeit on detection has not been built as a product anywhere.
 
 ---
 

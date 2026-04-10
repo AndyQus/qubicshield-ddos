@@ -174,7 +174,7 @@ Langfristig: native Browser-Integration, wie der Passwort-Manager oder das HTTPS
 | Cloudflare / Akamai | Technisches Filtern — kein wirtschaftliches Kautions-Modell |
 | Akademische Forschung | Konzeptuell diskutiert, nie produktionsreif |
 
-Die Idee verbindet Hashcash (1997) und Lightning HTLCs — aber die vollständige Kombination aus rückzahlbarer Kaution + Web-Zugang + DDoS-Schutz + Konfiszierung bei Erkennung wurde nirgendwo als Produkt gebaut.
+Die Idee verbindet Hashcash (1997) und Lightning HTLCs — aber die vollständige Kombination aus rückzahlbarer Kaution + Web-Zugang + wirtschaftlichem Spam-Schutz + Konfiszierung bei Erkennung wurde nirgendwo als Produkt gebaut.
 
 ---
 
