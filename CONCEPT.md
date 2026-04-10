@@ -51,20 +51,23 @@ No other blockchain makes this economically viable.
 ```
 User                    Qubic Smart Contract        Web Server
   |                            |                        |
-  |-- pays deposit (10 QUBIC) →|                        |
+  | (0. derive keys from seed — local, never sent to server)
+  |-- pays deposit + publicKey →|                       |
   |                            |-- holds deposit         |
+  |                            |-- stores publicKey      |
   |                            |-- issues access token   |
-  |-- Access Token ───────────────────────────────────→ |
-  |                                              validates token
+  |-- token + SchnorrQ signature ─────────────────────→ |
+  |                                  verifies signature  |
+  |                                  (publicKey from SC) |
   |←── Access granted ──────────────────────────────── |
-  [... normal usage ...]
+  [... each request signed — stolen token is useless without private key ...]
   |-- clean exit ──────────────→|                       |
   |                            |-- refunds deposit       |
   |←── 10 QUBIC returned ──────|
 
-On DDoS attack:
+On attack:
   Attacker: 1,000,000 requests → needs 1,000,000 × deposit upfront
-  → attack detected → all deposits forfeited → attacker loses funds
+  → attack detected + signatures verified → all deposits forfeited → attacker loses funds
 ```
 
 The smart contract is the single source of truth. No server, no trust required.
@@ -187,7 +190,7 @@ The idea connects to Hashcash (1997) and Lightning HTLCs — but the complete co
 | Privacy | Your traffic passes through their servers | GDPR-friendly by design |
 | Long-term goal | Manage attacks | Make attacks irrational |
 
-For organizations using Cloudflare only for DDoS: QubicShield is a full replacement — decentralized, cheaper, private.
+For organizations using Cloudflare primarily for rate limiting and API abuse protection: QubicShield is a compelling alternative — decentralized, cheaper, private. For volumetric network-layer DDoS mitigation, QubicShield is complementary rather than a replacement (see long-term vision for the shield-node network).
 
 ---
 

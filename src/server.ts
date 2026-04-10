@@ -4,6 +4,8 @@ import path from 'path';
 import depositManager from './depositManager';
 import * as scClient from './scClient';
 import { rateLimiter } from './middleware/rateLimiter';
+import { requestVerifier } from './middleware/requestVerifier';
+import { hexToBytes } from './requestSigner';
 
 const USE_REAL_SC = process.env.USE_REAL_SC === 'true';
 
@@ -85,6 +87,7 @@ async function requireValidToken(
 app.post('/api/deposit', async (req: Request, res: Response) => {
   const body = req.body as {
     walletAddress?: string;
+    publicKey?: string;       // hex-encoded 32-byte SchnorrQ public key (optional but recommended)
     senderSeed?: string;
     senderPublicId?: string;
     amount?: number;
@@ -115,13 +118,23 @@ app.post('/api/deposit', async (req: Request, res: Response) => {
     return;
   }
 
-  const { walletAddress } = body;
+  const { walletAddress, publicKey: publicKeyHex } = body;
   if (!walletAddress || typeof walletAddress !== 'string' || walletAddress.trim() === '') {
     res.status(400).json({ error: 'walletAddress is required.' });
     return;
   }
 
-  const { sessionId, accessToken } = depositManager.createDeposit(walletAddress.trim(), amount);
+  // Decode publicKey if provided — 64 hex chars = 32 bytes
+  let publicKeyBytes: Uint8Array | undefined;
+  if (publicKeyHex) {
+    if (!/^[0-9a-fA-F]{64}$/.test(publicKeyHex)) {
+      res.status(400).json({ error: 'publicKey must be 64 hex characters (32 bytes).' });
+      return;
+    }
+    publicKeyBytes = hexToBytes(publicKeyHex);
+  }
+
+  const { sessionId, accessToken } = depositManager.createDeposit(walletAddress.trim(), amount, publicKeyBytes);
   const deposit = depositManager.getDeposit(sessionId);
   res.status(201).json({
     sessionId,
@@ -185,6 +198,7 @@ app.get('/api/validate/:token', async (req: Request, res: Response) => {
 app.post('/api/refund', async (req: Request, res: Response) => {
   const body = req.body as {
     sessionId?: string;
+    walletAddress?: string;
     senderSeed?: string;
     senderPublicId?: string;
     sessionIndex?: number;
@@ -211,13 +225,14 @@ app.post('/api/refund', async (req: Request, res: Response) => {
     return;
   }
 
-  const { sessionId } = body;
+  const { sessionId, walletAddress } = body;
   if (!sessionId || typeof sessionId !== 'string') {
     res.status(400).json({ error: 'sessionId is required.' });
     return;
   }
 
-  const result = depositManager.refundDeposit(sessionId);
+  // Pass callerWallet so depositManager can verify it matches the depositor (open point #8)
+  const result = depositManager.refundDeposit(sessionId, walletAddress?.trim());
   if (result.success) {
     res.json({ success: true, refundedAmount: result.refundedAmount, message: result.message });
   } else {
@@ -236,6 +251,7 @@ app.post('/api/refund', async (req: Request, res: Response) => {
 app.get(
   '/api/protected',
   rateLimiter,
+  requestVerifier,
   requireValidToken,
   (req: AuthenticatedRequest, res: Response) => {
     const sessionId = req.sessionId!;

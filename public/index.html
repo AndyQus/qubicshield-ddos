@@ -684,6 +684,12 @@
       }
     }
   </style>
+  <!--
+    QSign: bundled Qubic SchnorrQ signing utility for the browser.
+    Built by: npm run build:browser  (esbuild → public/qsign.js)
+    Exposed as window.QSign — gracefully absent if not yet built.
+  -->
+  <script src="/qsign.js" onerror="console.warn('qsign.js not built yet — run: npm run build:browser')"></script>
 </head>
 
 <body class="lang-en">
@@ -717,14 +723,14 @@
 
   <!-- ── Hero ── -->
   <section class="hero">
-    <p class="hero-eyebrow">Qubic Ecosystem · DDoS Protection</p>
+    <p class="hero-eyebrow">Qubic Ecosystem · Economic Spam Shield</p>
     <h1>Hello Qubic</h1>
     <p>
-      <span data-lang="de" class="inline">Diese Seite ist durch QubicShield geschützt — dezentraler DDoS-Schutz
-        durch wirtschaftliche Abschreckung. Wer angreift, verliert seine Kaution.
+      <span data-lang="de" class="inline">Diese Seite ist durch QubicShield geschützt — wirtschaftliche Abschreckung
+        gegen API-Missbrauch. Wer angreift, verliert seine Kaution.
         Wer legitim ist, zahlt nichts.</span>
-      <span data-lang="en" class="inline">This page is protected by QubicShield — decentralised DDoS protection
-        through economic deterrence. Attackers lose their deposit.
+      <span data-lang="en" class="inline">This page is protected by QubicShield — economic deterrence
+        against API abuse. Attackers lose their deposit.
         Legitimate users pay nothing.</span>
     </p>
     <div class="hero-cta">    
@@ -828,6 +834,19 @@
           <div class="form-row">
             <label>Deposit-Betrag (QU)</label>
             <input id="amount" type="number" value="1000" min="10" />
+          </div>
+        </div>
+        <div class="form-row" style="margin-top:8px;">
+          <label style="display:flex; align-items:center; gap:8px;">
+            Qubic Seed (55 Zeichen) — für Request-Signing
+            <span style="font-size:0.75rem; color:var(--muted); font-weight:400;">
+              optional · bleibt im Browser · wird nie gesendet
+            </span>
+          </label>
+          <input id="seed" type="password" placeholder="55-stelliger Seed (z.B. aaabbbccc…)" autocomplete="off"
+            style="font-family:monospace;" />
+          <div id="signing-status" style="font-size:0.8rem; margin-top:4px; color:var(--muted);">
+            Ohne Seed: Bearer-Token-only Modus (REQUIRE_SIGNING=false)
           </div>
         </div>
 
@@ -1004,7 +1023,7 @@
   <!-- ── Footer ── -->
   <footer>
     <p>
-      QubicShield — Open Source DDoS Protection ·
+      QubicShield — Open Source Economic Spam Shield ·
       <a href="https://qubic.org" target="_blank">qubic.org</a> ·
       <a href="https://github.com" target="_blank">GitHub</a> ·
       Smart Contract: <code style="font-size:0.8em; color:var(--accent2)">QubicShield.h</code>
@@ -1061,17 +1080,55 @@
       if (loading) btn.innerHTML = '<span class="spinner"></span> Warten…';
     }
 
+    // ── Signing helpers ────────────────────────────────────────────────────────
+    // QSign is loaded from /qsign.js (bundled by esbuild).
+    // If the bundle is not yet built, signing is silently skipped.
+    function qsignAvailable() {
+      return typeof window.QSign !== 'undefined';
+    }
+
+    async function initSigning(seed) {
+      if (!qsignAvailable() || !seed || seed.length !== 55) return null;
+      try {
+        const pubKeyHex = await window.QSign.init(seed);
+        document.getElementById('signing-status').innerHTML =
+          `<span style="color:#22c55e">✓ Signing aktiv · PublicKey: ${pubKeyHex.slice(0,16)}…</span>`;
+        return pubKeyHex;
+      } catch (e) {
+        document.getElementById('signing-status').innerHTML =
+          `<span style="color:#ef4444">Signing-Fehler: ${e.message}</span>`;
+        return null;
+      }
+    }
+
+    async function buildSignedHeaders(token) {
+      if (!qsignAvailable() || !window.QSign.isReady()) {
+        return { 'Authorization': 'Bearer ' + token };
+      }
+      try {
+        return await window.QSign.signedHeaders(token);
+      } catch (e) {
+        console.warn('[QSign] signedHeaders failed:', e);
+        return { 'Authorization': 'Bearer ' + token };
+      }
+    }
+
     // ── Normal flow ────────────────────────────────────────────────────────────
     async function doDeposit() {
       const wallet = document.getElementById('wallet').value.trim() || 'DEMO-WALLET';
       const amount = parseInt(document.getElementById('amount').value) || 1000;
+      const seed   = document.getElementById('seed').value.trim();
       setLoading('btn-deposit', true);
       document.getElementById('flow-result').className = 'result-banner';
 
       try {
+        // Initialize signing and derive publicKey before the deposit request
+        const publicKeyHex = await initSigning(seed);
+
+        const body = { walletAddress: wallet, amount, ...(publicKeyHex ? { publicKey: publicKeyHex } : {}) };
         const res = await fetch(BASE + '/api/deposit', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ walletAddress: wallet, amount }),
+          body: JSON.stringify(body),
         });
         const data = await res.json();
         setOutput('flow-output', data);
@@ -1079,8 +1136,9 @@
         if (data.accessToken) {
           currentToken = data.accessToken;
           currentSession = data.sessionId;
+          const sigNote = publicKeyHex ? ' · Signing aktiv ✓' : ' · kein Seed (unsigniert)';
           setResult('flow-result', 'success',
-            `Deposit erstellt · Session: ${data.sessionId.slice(0, 8)}…`);
+            `Deposit erstellt · Session: ${data.sessionId.slice(0, 8)}…${sigNote}`);
           document.getElementById('btn-access').disabled = false;
           document.getElementById('btn-refund').disabled = false;
         } else {
@@ -1100,9 +1158,8 @@
       setLoading('btn-access', true);
 
       try {
-        const res = await fetch(BASE + '/api/protected', {
-          headers: { 'Authorization': 'Bearer ' + currentToken },
-        });
+        const headers = await buildSignedHeaders(currentToken);
+        const res = await fetch(BASE + '/api/protected', { headers });
         const data = await res.json();
         setOutput('flow-output', data);
 

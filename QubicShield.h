@@ -507,13 +507,26 @@ struct QubicShield
             return;
         }
 
-        // --- Verify token matches (proves caller owns this session) ----------
-        // In QPI, 'id' values can be compared with ==.
+        // --- Verify the caller is the original depositor ---------------------
+        // Fix for open point #8: token alone is not sufficient proof of ownership.
+        // Anyone who intercepts the token (e.g. the web server operator) could
+        // otherwise trigger a refund. The invocator must be the wallet that paid.
+
+        if (qpi.invocator() != entry.owner)
+        {
+            output.success   = 0;
+            output.errorCode = 2;  // wrong caller — not the session owner
+            return;
+        }
+
+        // --- Verify token matches (second factor: proves caller has the token) -
+        // Combined with the invocator check above, both the wallet identity AND
+        // the session token must match. Neither alone is sufficient.
 
         if (entry.token != input.token)
         {
             output.success   = 0;
-            output.errorCode = 2;  // wrong token — not the session owner
+            output.errorCode = 2;  // wrong token
             return;
         }
 

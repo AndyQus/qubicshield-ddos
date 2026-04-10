@@ -51,20 +51,23 @@ Keine andere Blockchain macht das wirtschaftlich realisierbar.
 ```
 Nutzer                  Qubic Smart Contract        Webserver
   |                            |                        |
-  |-- zahlt Kaution (10 QU) →  |                        |
+  | (0. Schlüssel aus Seed ableiten — lokal, nie gesendet)
+  |-- zahlt Kaution + PublicKey →|                      |
   |                            |-- hält Kaution          |
+  |                            |-- speichert PublicKey   |
   |                            |-- stellt Token aus      |
-  |-- Access-Token ───────────────────────────────────→  |
-  |                                              prüft Token
+  |-- Token + SchnorrQ-Signatur ───────────────────────→ |
+  |                                  prüft Signatur      |
+  |                                  (PublicKey aus SC)  |
   |←── Zugang gewährt ──────────────────────────────── |
-  [... normale Nutzung ...]
+  [... jede Anfrage signiert — gestohlenes Token ohne Privatschlüssel nutzlos ...]
   |-- sauberer Abgang ─────────→|                       |
   |                            |-- gibt Kaution zurück   |
   |←── 10 QU zurück ───────────|
 
-Bei DDoS-Angriff:
+Bei Angriff:
   Angreifer: 1.000.000 Anfragen → braucht 1.000.000 × Kaution vorab
-  → Angriff erkannt → alle Kautionen eingezogen → Angreifer verliert Geld
+  → Angriff erkannt + Signaturen geprüft → alle Kautionen eingezogen → Angreifer verliert Geld
 ```
 
 Der Smart Contract ist die einzige Wahrheitsquelle. Kein Server, kein Vertrauen nötig.
@@ -187,7 +190,7 @@ Die Idee verbindet Hashcash (1997) und Lightning HTLCs — aber die vollständig
 | Datenschutz | Traffic läuft über fremde Server | DSGVO-konform by Design |
 | Langfristziel | Angriffe managen | Angriffe irrational machen |
 
-Für Unternehmen, die Cloudflare nur wegen DDoS nutzen: QubicShield ist ein vollwertiger Ersatz — dezentral, günstiger, privater.
+Für Unternehmen, die Cloudflare primär für Rate Limiting und API-Schutz nutzen: QubicShield ist eine überzeugende Alternative — dezentral, günstiger, datenschutzfreundlicher. Für volumetrischen Netzwerk-DDoS-Schutz ist QubicShield eher ergänzend als ersetzend (siehe Langzeit-Vision zum Shield-Node-Netz).
 
 ---
 

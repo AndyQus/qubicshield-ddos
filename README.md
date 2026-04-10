@@ -1,8 +1,11 @@
-# QubicShield — DDoS Protection via Economic Deposit
+# QubicShield — Economic Spam Shield via Refundable Deposit
 
 **Status:** Proof of Concept — TypeScript SDK integrated, ready for Testnet Deploy  
-**Tagline:** "DDoS protection powered by economic incentives — zero fees, instant refund"  
+**Tagline:** "Make API abuse economically irrational — zero fees, instant refund on Qubic"  
 **Technology:** Qubic Smart Contract (C++/QPI), Web Proxy (Node.js/Express), TypeScript
+
+> **Note on scope:** QubicShield protects authenticated API access through economic incentives.
+> It is not a network-layer DDoS mitigation (see [open point #9](#open-points--feedback-from-core-developer-2026-04-10) and the [long-term vision](docs/gedanken/vision-dezentrales-ddos-netz.md)).
 
 → **[Read the full concept & vision](CONCEPT.md)**
 
@@ -32,20 +35,27 @@ Qubic's zero-fee architecture is the only blockchain where this model is economi
 ```
 User                    Qubic Smart Contract        Web Server
   |                            |                        |
-  |-- pays deposit (e.g. 10 QUBIC) ->|                 |
+  | (0. derive keys from seed — local, never sent to server)
+  |-- pays deposit + publicKey →|                       |
   |                            |-- holds deposit         |
+  |                            |-- stores publicKey      |
   |                            |-- issues access token   |
-  |-- Access Token ----------->|                        |
-  |                            |               validates token
-  |<-- Access granted ---------|                        |
-  [... usage ...]
+  |-- token + SchnorrQ signature ─────────────────────→ |
+  |                                  verifies signature  |
+  |                                  (publicKey from SC) |
+  |←── Access granted ─────────────────────────────── |
+  [... each request signed with private key ...]
   |-- clean exit ------------->|                        |
   |                            |-- refunds deposit      |
   |<-- 10 QUBIC returned ------|
 
-On DDoS:
-  Attacker: 1,000,000 requests → needs 1,000,000 × deposit
-  → attack detected → deposits forfeited → revenue for operator
+On attack:
+  Attacker: 1,000,000 requests → needs 1,000,000 × deposit upfront
+  → attack detected + signatures verified → deposits forfeited → revenue for operator
+
+Note: signing uses X-QS-Nonce + X-QS-Timestamp + X-QS-Signature headers.
+      A stolen token without the private key cannot forge valid signatures.
+      REQUIRE_SIGNING=false (default) allows token-only mode for backwards compatibility.
 ```
 
 ## Research Status (verified 2026-03-27)
@@ -151,12 +161,67 @@ Attack detection runs locally in the server. When an attack is detected, `deposi
 **6. Event log unavailable in SC mode**  
 `GET /api/events` only works in mock mode. In real SC mode there is no audit trail of deposits, refunds, or forfeit decisions.
 
+---
+
+### Open Points — Feedback from Core Developer (2026-04-10)
+
+**[OPEN] 7. Token theft — static token is not bound to the caller's identity**  
+The access token is a static secret transmitted as a `Bearer` token in every HTTP request.
+Anyone who intercepts the traffic (MITM without HTTPS) or gains access to server logs can
+reuse the token. A stolen token is indistinguishable from the legitimate one.
+
+**Root cause:** The token only proves knowledge of a secret, not ownership of a wallet.
+
+**Planned fix:** Every request must carry a short-lived cryptographic signature produced by
+the user's Qubic private key: `sig = Sign(token + nonce + timestamp)`. The server (or SC)
+verifies the signature against the wallet's public key stored at deposit time. A stolen token
+without the private key is useless.
+
+*Status: **fixed** — Per-request SchnorrQ signing implemented end-to-end:*
+- *`src/requestSigner.ts` — shared sign/verify logic using `schnorrq` + `K12` from `@qubic-lib/qubic-ts-library`*
+- *`src/browser/qsign.ts` — browser-side signing utility (bundled via esbuild → `public/qsign.js`)*
+- *`src/middleware/requestVerifier.ts` — Express middleware: verifies timestamp, nonce (replay protection), SchnorrQ signature*
+- *`src/depositManager.ts` — stores 32-byte `publicKey` per session; tracks `usedNonces` per session*
+- *`src/server.ts` — accepts optional `publicKey` hex on deposit; applies `requestVerifier` before `requireValidToken` on `/api/protected`*
+- *`public/index.html` — Seed input (never sent to server); `QSign.init(seed)` derives keys; `QSign.signedHeaders(token)` builds signed request headers*
+- *Backwards-compatible: `REQUIRE_SIGNING=false` (default) allows token-only requests; set `REQUIRE_SIGNING=true` to enforce signing in production*
+- *Build browser bundle: `npm run build:browser`*
+
+---
+
+**[OPEN] 8. Refund authorization — anyone who knows the token can trigger a refund**  
+`Refund()` in `QubicShield.h` verifies `entry.token == input.token` but does **not** check
+`qpi.invocator() == entry.owner`. This means any party who obtains the token and session index
+(e.g. the web server operator) can trigger a refund to the original depositor's wallet
+— or could be extended by an attacker to drain sessions they don't own.
+
+**Planned fix:** Add `if (qpi.invocator() != entry.owner)` guard at the top of `PUBLIC_PROCEDURE(Refund)`.
+This ensures only the original depositor can request their own refund.
+
+*Status: **fixed** — `qpi.invocator() != entry.owner` guard added to `PUBLIC_PROCEDURE(Refund)` in `QubicShield.h`. Mock (`depositManager.ts`) updated: `refundDeposit()` now accepts optional `callerWallet` and rejects mismatches. `server.ts` passes `walletAddress` from request body to the mock check.*
+
+---
+
+**[OPEN] 9. Not actual DDoS protection — unauthenticated traffic still reaches the server**  
+The deposit model only protects the authenticated code path. An attacker sending millions of
+requests *without* a token still causes the server to accept TCP connections, parse HTTP headers,
+and return 401 responses — which is enough to exhaust server resources.
+
+**What QubicShield actually solves:** Economic spam prevention for *authenticated* API access.
+It is not a replacement for network-layer DDoS mitigation (Cloudflare, Anycast, BGP filtering).
+
+**Long-term vision:** Qubic as the economic backbone of a decentralized shield-node network
+that filters traffic *before* it reaches the origin server.
+See [`docs/gedanken/vision-dezentrales-ddos-netz.md`](docs/gedanken/vision-dezentrales-ddos-netz.md).
+
+*Status: **partially addressed** — project title and tagline updated to "Economic Spam Shield". A scope note has been added at the top of the README. The long-term architectural path is documented in [`docs/gedanken/vision-dezentrales-ddos-netz.md`](docs/gedanken/vision-dezentrales-ddos-netz.md).*
+
 ## Getting Started
 
 ```bash
 # Clone repository and install dependencies
 git clone <repo-url>
-cd qubicshield-ddos
+cd qubicshield
 npm install
 
 # Run tests (all 56 must pass)
@@ -199,7 +264,7 @@ USE_REAL_SC=true npm run dev
 
 ## GitHub Pages
 
-The interactive guide is available at: **https://andyqus.github.io/qubicshield-ddos/**
+The interactive guide is available at: **https://andyqus.github.io/qubicshield/**
 
 The root `index.html` is a static file and works on GitHub Pages without any server.  
 Enable Pages in your repository settings (Source: `main` branch, root `/`) — done.

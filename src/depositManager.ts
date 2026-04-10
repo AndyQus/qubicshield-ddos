@@ -3,6 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 export interface Deposit {
   sessionId: string;
   walletAddress: string;
+  /** 32-byte SchnorrQ public key — set when client provides publicKey at deposit time */
+  publicKey?: Uint8Array;
   amount: number; // in QUBIC units
   createdAt: number;
   expiresAt: number;
@@ -44,6 +46,9 @@ class DepositManager {
   /** Request timestamps per session for rate tracking (sliding window) */
   private requestTimestamps: Map<string, number[]> = new Map();
 
+  /** Used nonces per session — prevents replay attacks on signed requests */
+  private usedNonces: Map<string, Set<string>> = new Map();
+
   // 50/50 split accumulators — mirrors the SC's BEGIN_EPOCH distribution
   private forfeitedToBurn   = 0;   // 50% → permanently removed from supply
   private forfeitedToVictim = 0;   // 50% → transferred to the attacked service operator
@@ -62,7 +67,8 @@ class DepositManager {
    */
   createDeposit(
     walletAddress: string,
-    amount: number
+    amount: number,
+    publicKey?: Uint8Array,
   ): { sessionId: string; accessToken: string } {
     const sessionId = uuidv4();
     const accessToken = uuidv4();
@@ -71,6 +77,7 @@ class DepositManager {
     const deposit: Deposit = {
       sessionId,
       walletAddress,
+      publicKey,
       amount,
       createdAt: now,
       expiresAt: now + this.SESSION_TTL_MS,
@@ -81,6 +88,7 @@ class DepositManager {
     this.deposits.set(sessionId, deposit);
     this.tokenToSession.set(accessToken, { sessionId, createdAt: now });
     this.requestTimestamps.set(sessionId, []);
+    this.usedNonces.set(sessionId, new Set());
 
     this._logEvent({ type: 'deposit', sessionId, wallet: walletAddress, amount });
 
@@ -122,7 +130,13 @@ class DepositManager {
    * Refund a deposit when the user cleanly ends their session.
    * Returns false if the session cannot be refunded (already processed, attacking etc.).
    */
-  refundDeposit(sessionId: string): { success: boolean; refundedAmount?: number; message: string } {
+  /**
+   * Fix for open point #8: callerWallet must match the depositor's wallet.
+   * In the mock there is no cryptographic identity — we use the wallet address
+   * supplied by the client as a stand-in. In SC mode this is enforced by
+   * qpi.invocator() == entry.owner inside QubicShield.h.
+   */
+  refundDeposit(sessionId: string, callerWallet?: string): { success: boolean; refundedAmount?: number; message: string } {
     const deposit = this.deposits.get(sessionId);
     if (!deposit) {
       return { success: false, message: 'Session not found.' };
@@ -137,6 +151,11 @@ class DepositManager {
         success: false,
         message: `Deposit was forfeited: ${deposit.forfeitReason ?? 'unknown reason'}.`,
       };
+    }
+
+    // Caller identity check — mirrors qpi.invocator() == entry.owner in the SC
+    if (callerWallet && callerWallet !== deposit.walletAddress) {
+      return { success: false, message: 'Refund rejected: caller wallet does not match depositor.' };
     }
 
     if (this.isAttacking(sessionId)) {
@@ -234,6 +253,20 @@ class DepositManager {
     const mapping = this.tokenToSession.get(accessToken);
     if (!mapping) return undefined;
     return this.getDeposit(mapping.sessionId);
+  }
+
+  /**
+   * Return the live nonce Set for a session.
+   * The requestVerifier middleware adds consumed nonces directly to this Set.
+   * Returns an empty Set (and stores it) if the session has no nonce store yet.
+   */
+  getNonceSet(sessionId: string): Set<string> {
+    let set = this.usedNonces.get(sessionId);
+    if (!set) {
+      set = new Set();
+      this.usedNonces.set(sessionId, set);
+    }
+    return set;
   }
 
   /**

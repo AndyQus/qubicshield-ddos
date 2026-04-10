@@ -1,8 +1,11 @@
-# QubicShield — DDoS-Schutz über wirtschaftliche Kaution
+# QubicShield — Economic Spam Shield über wirtschaftliche Kaution
 
 **Status:** Proof of Concept — TypeScript SDK integriert, bereit für Testnet-Deploy  
-**Slogan:** „DDoS-Schutz durch wirtschaftliche Anreize — keine Gebühren, sofortige Rückerstattung"  
+**Slogan:** „API-Missbrauch wirtschaftlich irrational machen — keine Gebühren, sofortige Rückerstattung auf Qubic"  
 **Technologie:** Qubic Smart Contract (C++/QPI), Web-Proxy (Node.js/Express), TypeScript
+
+> **Hinweis zum Scope:** QubicShield schützt authentifizierten API-Zugang durch wirtschaftliche Anreize.
+> Es ist kein Netzwerk-Layer-DDoS-Schutz (siehe offene Punkte und [Langzeit-Vision](docs/gedanken/vision-dezentrales-ddos-netz.md)).
 
 → **[Vollständiges Konzept & Vision lesen](CONCEPT_de.md)**
 
@@ -32,20 +35,27 @@ Qubics gebührenfreie Architektur ist die einzige Blockchain, auf der dieses Mod
 ```
 Nutzer                  Qubic Smart Contract        Webserver
   |                            |                        |
-  |-- zahlt Kaution (z.B. 10 QUBIC) ->|                |
+  | (0. Schlüssel aus Seed ableiten — lokal, nie gesendet)
+  |-- zahlt Kaution + PublicKey →|                      |
   |                            |-- hält Kaution          |
+  |                            |-- speichert PublicKey   |
   |                            |-- stellt Access-Token aus|
-  |-- Access-Token ----------->|                        |
-  |                            |               prüft Token
-  |<-- Zugang gewährt ---------|                        |
-  [... Nutzung ...]
+  |-- Token + SchnorrQ-Signatur ───────────────────────→ |
+  |                                  prüft Signatur      |
+  |                                  (PublicKey aus SC)  |
+  |←── Zugang gewährt ─────────────────────────────── |
+  [... jede Anfrage mit privatem Schlüssel signiert ...]
   |-- sauberer Abgang -------->|                        |
   |                            |-- erstattet Kaution     |
   |<-- 10 QUBIC zurück --------|
 
-Bei DDoS:
+Bei Angriff:
   Angreifer: 1.000.000 Anfragen → braucht 1.000.000 × Kaution
-  → Angriff erkannt → Kautionen einbehalten → Einnahmen für Betreiber
+  → Angriff erkannt + Signaturen geprüft → Kautionen einbehalten → Einnahmen für Betreiber
+
+Hinweis: Signing nutzt X-QS-Nonce + X-QS-Timestamp + X-QS-Signatur-Header.
+         Ein gestohlenes Token ohne privaten Schlüssel kann keine gültigen Signaturen erzeugen.
+         REQUIRE_SIGNING=false (Standard) erlaubt Token-only-Modus für Abwärtskompatibilität.
 ```
 
 ## Recherche-Stand (geprüft 2026-03-27)
@@ -156,7 +166,7 @@ Die Angriffserkennung läuft lokal im Server. Wenn ein Angriff erkannt wird, akt
 ```bash
 # Repository klonen und Abhängigkeiten installieren
 git clone <repo-url>
-cd qubicshield-ddos
+cd qubicshield
 npm install
 
 # Tests ausführen (alle 56 müssen grün sein)
@@ -199,7 +209,7 @@ USE_REAL_SC=true npm run dev
 
 ## GitHub Pages
 
-Der interaktive Guide ist verfügbar unter: **https://andyqus.github.io/qubicshield-ddos/**
+Der interaktive Guide ist verfügbar unter: **https://andyqus.github.io/qubicshield/**
 
 Die Root-`index.html` ist eine statische Datei und funktioniert auf GitHub Pages ohne Server.  
 Pages in den Repository-Einstellungen aktivieren (Source: Branch `main`, Root `/`) — fertig.

@@ -890,32 +890,36 @@ END_EPOCH</code></pre>
       </h2>
       <div class="flow-diagram"><span data-lang="de">Nutzer-Browser        Web-Proxy (Node.js)       Qubic Smart Contract
       |                        |                              |
-      |-- zahlt Deposit ------>|                              |
+      | (0. Schlüssel aus Seed ableiten — lokal, nie gesendet)|
+      |-- Deposit + PublicKey ->|                              |
       |                        |-- Deposit(amount) ---------->|
-      |                        |                   speichert Entry
+      |                        |                   speichert Entry + PublicKey
       |                        |<-- token + index ------------|
       |<-- token --------------|                              |
       |                        |                              |
-      |-- Request + token ---->|                              |
+      |-- token + SchnorrQ-Sig →|                             |
+      |                        |  prüft Signatur (PublicKey)  |
       |                        |-- ValidateSession(token) --->|
       |                        |<-- valid=1 / valid=0 --------|
-      |<-- 200 OK / 403 -------|                              |
+      |<-- 200 OK / 401/403 ---|                              |
       |                        |                              |
       |-- sauberes Verlassen ->|                              |
       |                        |-- Refund(index, token) ----->|
       |                        |         qpi.transfer() ------+--> QUBIC zurück
       |<-- "Deposit zurück" ---|                              |</span><span data-lang="en">User Browser          Web-Proxy (Node.js)       Qubic Smart Contract
       |                        |                              |
-      |-- pays deposit ------->|                              |
+      | (0. derive keys from seed — local, never sent)        |
+      |-- Deposit + publicKey ->|                              |
       |                        |-- Deposit(amount) ---------->|
-      |                        |                   stores Entry
+      |                        |                   stores Entry + publicKey
       |                        |<-- token + index ------------|
       |<-- token --------------|                              |
       |                        |                              |
-      |-- Request + token ---->|                              |
+      |-- token + SchnorrQ sig →|                             |
+      |                        |  verifies signature (pubKey) |
       |                        |-- ValidateSession(token) --->|
       |                        |<-- valid=1 / valid=0 --------|
-      |<-- 200 OK / 403 -------|                              |
+      |<-- 200 OK / 401/403 ---|                              |
       |                        |                              |
       |-- clean exit --------->|                              |
       |                        |-- Refund(index, token) ----->|
@@ -1168,7 +1172,7 @@ USE_REAL_SC=true npm run dev</code></pre>
         <p>Der QubicShield-Server ist ein einzelner Express-Prozess, der gleichzeitig das Frontend ausliefert und die API-Endpunkte bereitstellt. Es gibt keinen separaten Frontend-Server.</p>
 
         <h3 style="margin:1.2rem 0 0.5rem;font-size:1rem;color:var(--text)">Server starten</h3>
-        <pre><code>cd qubicshield-ddos
+        <pre><code>cd qubicshield
 npm run dev</code></pre>
         <p>Die Konsole zeigt dann:</p>
         <pre><code>QubicShield Demo Server running at http://localhost:3000
@@ -1228,7 +1232,7 @@ Routes:
         <p>The QubicShield server is a single Express process that simultaneously serves the frontend and provides the API endpoints. There is no separate frontend server.</p>
 
         <h3 style="margin:1.2rem 0 0.5rem;font-size:1rem;color:var(--text)">Starting the server</h3>
-        <pre><code>cd qubicshield-ddos
+        <pre><code>cd qubicshield
 npm run dev</code></pre>
         <p>The console will show:</p>
         <pre><code>QubicShield Demo Server running at http://localhost:3000

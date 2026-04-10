@@ -89,7 +89,7 @@ async function main() {
   } catch {
     err(`Server nicht erreichbar: ${BASE}`);
     log(`\n${C.yellow}  Starte zuerst den Server:${C.reset}`);
-    log(`${C.dim}  cd qubicshield-ddos && npm start${C.reset}\n`);
+    log(`${C.dim}  cd qubicshield && npm start${C.reset}\n`);
     process.exit(1);
   }
 
