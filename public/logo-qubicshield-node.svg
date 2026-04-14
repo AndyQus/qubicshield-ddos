@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <defs>
+    <linearGradient id="bg-grad-n" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0d1117"/>
+      <stop offset="100%" stop-color="#161b22"/>
+    </linearGradient>
+    <linearGradient id="shield-grad-n" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="node-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <filter id="glow-n">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="node-glow">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="240" height="240" rx="32" fill="url(#bg-grad-n)"/>
+
+  <!-- Network connection lines (nodes to shield) -->
+  <line x1="38" y1="58"  x2="90"  y2="90"  stroke="#10b981" stroke-width="1.5" opacity="0.5" stroke-dasharray="4 3"/>
+  <line x1="202" y1="58" x2="150" y2="90"  stroke="#10b981" stroke-width="1.5" opacity="0.5" stroke-dasharray="4 3"/>
+  <line x1="24"  y1="130" x2="75" y2="118" stroke="#10b981" stroke-width="1.5" opacity="0.5" stroke-dasharray="4 3"/>
+  <line x1="216" y1="130" x2="165" y2="118" stroke="#10b981" stroke-width="1.5" opacity="0.5" stroke-dasharray="4 3"/>
+  <line x1="60"  y1="196" x2="96" y2="168" stroke="#10b981" stroke-width="1.5" opacity="0.5" stroke-dasharray="4 3"/>
+  <line x1="180" y1="196" x2="144" y2="168" stroke="#10b981" stroke-width="1.5" opacity="0.5" stroke-dasharray="4 3"/>
+
+  <!-- Outer nodes -->
+  <circle cx="38"  cy="58"  r="8" fill="url(#node-grad)" opacity="0.85" filter="url(#node-glow)"/>
+  <circle cx="202" cy="58"  r="8" fill="url(#node-grad)" opacity="0.85" filter="url(#node-glow)"/>
+  <circle cx="24"  cy="130" r="8" fill="url(#node-grad)" opacity="0.85" filter="url(#node-glow)"/>
+  <circle cx="216" cy="130" r="8" fill="url(#node-grad)" opacity="0.85" filter="url(#node-glow)"/>
+  <circle cx="60"  cy="196" r="8" fill="url(#node-grad)" opacity="0.85" filter="url(#node-glow)"/>
+  <circle cx="180" cy="196" r="8" fill="url(#node-grad)" opacity="0.85" filter="url(#node-glow)"/>
+
+  <!-- Shield shape (slightly smaller than standalone version) -->
+  <path d="M120 36 L170 57 L170 112 Q170 154 120 182 Q70 154 70 112 L70 57 Z"
+        fill="url(#shield-grad-n)" opacity="0.15"/>
+  <path d="M120 36 L170 57 L170 112 Q170 154 120 182 Q70 154 70 112 L70 57 Z"
+        fill="none" stroke="url(#shield-grad-n)" stroke-width="3" filter="url(#glow-n)"/>
+
+  <!-- Q letter -->
+  <text x="120" y="126" font-family="'Segoe UI', system-ui, sans-serif"
+        font-size="56" font-weight="700" text-anchor="middle"
+        fill="url(#shield-grad-n)" filter="url(#glow-n)" opacity="0.95">Q</text>
+
+  <!-- Decorative dots (Qubic II motif) -->
+  <rect x="109" y="148" width="8"  height="22" rx="2.5" fill="#06b6d4" opacity="0.7"/>
+  <rect x="123" y="148" width="8"  height="22" rx="2.5" fill="#7c3aed" opacity="0.7"/>
+</svg>
